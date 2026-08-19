@@ -28,7 +28,7 @@ source.exclude_patterns = license,images/bad/*
 version = 1.0.1
 
 # (list) Application requirements
-requirements = python3,kivy,requests,pillow,pyjnius,certifi,urllib3,idna,charset-normalizer,sqlite3
+requirements = python3,kivy,requests,pillow,pyjnius,certifi,urllib3,idna,charset-normalizer,sqlite3,openpyxl
 
 # (list) Custom source folders for dependencies
 #source.custom_path =
@@ -79,6 +79,9 @@ android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) If True, then p4a will perform a clean build
 android.clear_cache = False
+
+# (bool) Accept Android SDK licenses automatically (Evita bloqueos en GitHub Actions)
+android.accept_sdk_license = True
 
 # -------------------------------------------------------------------------
 # CONFIGURACIÓN DE FIRMA DIGITAL (KEYSTORE)

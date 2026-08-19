@@ -22,11 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
-      - name: Instalar Buildozer y herramientas base
+      - name: Configurar entorno con pip compatible
         run: |
-          python -m pip install --upgrade pip==23.0.1
+          python -m pip install --upgrade "pip>=23.0,<24.2"
           pip install --upgrade buildozer cython
-          pip install openpyxl requests pillow pyjnius certifi urllib3 idna charset-normalizer
+          pip install openpyxl requests pillow pyjnius
 
       - name: Compilar la APK con Buildozer
         run: buildozer android debug

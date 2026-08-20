@@ -654,6 +654,12 @@ class RegistroClienteScreen(PantallaConDatos):
         self.detener_sensor_gps()
         self.manager.current = 'main'
 
+import re
+import os
+import json
+import sqlite3
+import time
+import threading
 class RegistroVisitaScreen(PantallaConDatos):
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -833,9 +839,8 @@ class RegistroVisitaScreen(PantallaConDatos):
 
         if request_code == 1011:
             if result_code == -1: 
-                import os
-                from jnius import autoclass
                 try:
+                    from jnius import autoclass
                     PythonActivity = autoclass('org.kivy.android.PythonActivity')
                     context = PythonActivity.mActivity
                     self.ruta_foto_actual = os.path.join(context.getFilesDir().getAbsolutePath(), "visita_temp.jpg")
@@ -851,13 +856,11 @@ class RegistroVisitaScreen(PantallaConDatos):
                 self.lbl_foto.color = (1, 0.3, 0.3, 1)
 
     def subir_foto_a_firebase_con_ruta(self, ruta_archivo, zona="", tecnico=""):
-        import os, uuid, requests, time, re
-        
+        import uuid
         if not ruta_archivo:
             print("[STORAGE ERROR] La ruta de la foto está vacía.")
             return "ERROR_RUTA_VACIA"
 
-        # 1. Resolver URIs virtuales de Android (content://) si la cámara las devuelve así
         if ruta_archivo.startswith("content://"):
             try:
                 from jnius import autoclass
@@ -879,11 +882,9 @@ class RegistroVisitaScreen(PantallaConDatos):
                 InputStream.close()
                 
                 ruta_archivo = temp_file.getAbsolutePath()
-                print(f"[STORAGE] URI de Android convertida a archivo físico: {ruta_archivo}")
             except Exception as e:
                 print(f"[STORAGE ERROR] No se pudo procesar la URI content://: {e}")
 
-        # 2. Búsqueda adaptable en el almacenamiento interno si la ruta directa no existe
         if not os.path.exists(ruta_archivo):
             try:
                 from jnius import autoclass
@@ -914,34 +915,16 @@ class RegistroVisitaScreen(PantallaConDatos):
             url_upload = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o?uploadType=media&name={file_name_encoded}"
             headers = {"Content-Type": "image/jpeg"}
 
-            print(f"[STORAGE] Subiendo a: {url_upload} (Tamaño: {len(file_data)} bytes)")
             response = requests.post(url_upload, data=file_data, headers=headers, timeout=30)
             
-            print(f"[STORAGE] Código HTTP respuesta: {response.status_code}")
-            print(f"[STORAGE] Respuesta de Firebase: {response.text}")
-
             if response.status_code == 200:
                 res_json = response.json()
                 raw_tokens = res_json.get("downloadTokens", "")
                 download_token = raw_tokens.split(",")[0] if raw_tokens else token_personalizado
                 
                 url_publica = f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/{file_name_encoded}?alt=media&token={download_token}"
-                print(f"[STORAGE] Éxito total URL pública: {url_publica}")
-                
-                # Función auxiliar local para sanitizar claves en Firebase RTDB (evita error 400 por caracteres inválidos)
-                def limpiar_clave(texto):
-                    return re.sub(r'[.#$\[\]/\s]', '_', str(texto)) if texto else "GENERAL"
-
-                # Si necesitas registrar la visita asociada a la foto en Realtime Database, hazlo aquí de forma limpia:
-                # zona_s = limpiar_clave(zona)
-                # tecnico_s = limpiar_clave(tecnico)
-                # key_visita = f"{zona_s}_{tecnico_s}_{timestamp_str}"
-                # url_rtdb = f"{URL}/distribuidoras/{DISTRIBUIDORA}/visitas/{key_visita}.json"
-                # requests.put(url_rtdb, json={"foto": url_publica, "fecha": timestamp_str})
-
                 return url_publica
             else:
-                print(f"[STORAGE ERROR] Falló HTTP {response.status_code}: {response.text}")
                 return f"ERROR_HTTP_{response.status_code}"
                 
         except Exception as e:
@@ -971,7 +954,6 @@ class RegistroVisitaScreen(PantallaConDatos):
             self.lbl_foto.text = "Foto no capturada *"
             self.lbl_foto.color = (1, 0.3, 0.3, 1)
         
-        import threading
         threading.Thread(target=self.cargar_clientes_hilo, daemon=True).start()
 
     def cargar_clientes_hilo(self):
@@ -980,7 +962,6 @@ class RegistroVisitaScreen(PantallaConDatos):
         catalogo_detalle = {}
         mis_clientes = []
         
-        import sqlite3, json, time
         for i in range(3):
             try:
                 conn = sqlite3.connect(db_path, timeout=5)
@@ -992,7 +973,6 @@ class RegistroVisitaScreen(PantallaConDatos):
                 cursor.close()
                 conn.close()
                 
-                from kivy.app import App
                 app = App.get_running_app()
                 mi_id = str(getattr(app, 'device_id', '')).strip()
                 
@@ -1008,7 +988,6 @@ class RegistroVisitaScreen(PantallaConDatos):
                     for k, v in clientes_db.items():
                         if isinstance(v, dict):
                             id_tec_cliente = str(v.get('tecnico_id', '')).strip()
-                            # CORRECCIÓN: Permitimos la visualización si coincide el técnico, si está libre, o si acabamos de crearlo localmente
                             if id_tec_cliente == mi_id or id_tec_cliente == "" or id_tec_cliente == "ID_DESCONOCIDO" or not mi_id:
                                 nombre = v.get('nombre', 'Sin nombre')
                                 zona = v.get('zona', 'Sin zona')
@@ -1038,7 +1017,6 @@ class RegistroVisitaScreen(PantallaConDatos):
                 if not mis_clientes:
                     mis_clientes = ["Sin clientes asignados"]
 
-                from kivy.clock import Clock
                 Clock.schedule_once(lambda dt: self.actualizar_ui_clientes(clientes_db, mis_clientes, catalogo_detalle), 0)
                 return
                 
@@ -1050,13 +1028,11 @@ class RegistroVisitaScreen(PantallaConDatos):
                 break
                 
         try:
-            from kivy.app import App
             app = App.get_running_app()
             if hasattr(app, 'clientes_lista') and app.clientes_lista:
                 mis_clientes = sorted(list(set(app.clientes_lista)))
             else:
                 mis_clientes = ["Sin clientes asignados"]
-            from kivy.clock import Clock
             Clock.schedule_once(lambda dt: self.actualizar_ui_clientes(clientes_db, mis_clientes, catalogo_detalle), 0)
         except:
             pass
@@ -1087,7 +1063,6 @@ class RegistroVisitaScreen(PantallaConDatos):
             if esp in MAPA_TECNICO:
                 for e in MAPA_TECNICO[esp]['etapas']:
                     f = BoxLayout(size_hint_y=None, height=dp(60), spacing=dp(10))
-                    # Mantiene el nombre exacto de la etapa (ej: "Postura F1", "Crecimiento")
                     f.add_widget(Label(text=str(e), color=(1,1,1,1), size_hint_x=0.6, font_size=dp(16), bold=True, outline_color=(0,0,0,1), outline_width=1.5))
                     i = BigInput(text=str(cli.get('inventario', {}).get(e, "0")), input_filter='int', size_hint_x=0.4)
                     f.add_widget(i); self.box_animales.add_widget(f); self.inputs_inv[e] = i
@@ -1138,9 +1113,7 @@ class RegistroVisitaScreen(PantallaConDatos):
             self.lbl_foto.color = (1, 0.1, 0.1, 1)
             return
 
-        cliente_id_seguro = str(self.id_cliente_actual)
         nombre_productor_limpio = "PRODUCTOR"
-        
         cli_obj = next((v for v in self.clientes_db.values() if str(v.get('id_interno')) == str(self.id_cliente_actual)), None)
         if cli_obj and 'nombre' in cli_obj:
             nombre_productor_limpio = str(cli_obj.get('nombre')).strip()
@@ -1151,23 +1124,20 @@ class RegistroVisitaScreen(PantallaConDatos):
             else:
                 nombre_productor_limpio = texto_sp.strip()
 
-        # Construcción exacta del formato: ZONA ESTE_CARLOS_7458 (sin sanitizar los espacios del nombre/zona con guiones bajos excesivos si no se requiere, o respetando el formato exacto del requerimiento)
         if hasattr(self, 'zona_actual') and self.zona_actual:
             zona_o_prefijo = str(self.zona_actual).strip()
         elif cli_obj and 'zona' in cli_obj:
             zona_o_prefijo = str(cli_obj.get('zona')).strip()
+        else:
+            zona_o_prefijo = "GENERAL"
         
         cliente_id_formateado = f"{zona_o_prefijo}_{nombre_productor_limpio}"
         timestamp_id = time.strftime("%Y_%m_%d_%H_%M_%S")
-        timestamp_nodo_key = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        import json, sqlite3, threading
-        from datetime import datetime
         try:
             inv_animales = {}
             for e, i in self.inputs_inv.items():
                 try:
-                    # Se mantiene el nombre original de la etapa zootécnica (ej: "Postura F1", "Crecimiento") como clave directa
                     inv_animales[str(e)] = int(i.text) if i.text.strip() else 0
                 except ValueError:
                     inv_animales[str(e)] = 0
@@ -1195,33 +1165,43 @@ class RegistroVisitaScreen(PantallaConDatos):
 
             threading.Thread(
                 target=self.enviar_todo_proceso_limpio, 
-                args=(cliente_id_seguro, self.ruta_foto_actual, timestamp_id, cliente_id_formateado, inv_animales, params_visita, detalle_bodega),
+                args=(self.ruta_foto_actual, timestamp_id, cliente_id_formateado, inv_animales, params_visita, detalle_bodega),
                 daemon=True
             ).start()
 
         except Exception as e:
             print(f"Error interno al preparar el envío: {e}")
 
-    def enviar_todo_proceso_limpio(self, cliente_id, ruta_foto, timestamp_id, cliente_id_formateado, inv_animales, params_visita, detalle_bodega):
+    def enviar_todo_proceso_limpio(self, ruta_foto, timestamp_id, cliente_id_formateado, inv_animales, params_visita, detalle_bodega):
         try:
             url_publica_foto = self.subir_foto_a_firebase_con_ruta(ruta_foto)
             if not url_publica_foto or "ERROR" in url_publica_foto:
                 url_publica_foto = "PENDIENTE_SUBIDA"
 
-            data_visita = {
+            # Función recursiva para sanitizar TODAS las claves de los diccionarios internos (evita error 400 de Firebase)
+            def sanitizar_claves_firebase(obj):
+                if isinstance(obj, dict):
+                    nuevo_dict = {}
+                    for k, v in obj.items():
+                        k_limpia = re.sub(r'[\.\#\$\[\]/]', '_', str(k))
+                        nuevo_dict[k_limpia] = sanitizar_claves_firebase(v)
+                    return nuevo_dict
+                elif isinstance(obj, list):
+                    return [sanitizar_claves_firebase(item) for item in obj]
+                else:
+                    return obj
+
+            data_visita = sanitizar_claves_firebase({
                 "cliente_id": cliente_id_formateado,
                 "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "inventario_animales": inv_animales,
                 "parametros_tecnicos": params_visita,
                 "control_alimento": detalle_bodega,
                 "ruta_foto_evidencia": url_publica_foto
-            }
+            })
             
-            # Forzamos una limpieza estricta reemplazando puntos, barras y espacios prohibidos por Firebase
-            nodo_url_seguro = str(cliente_id_formateado).replace(".", "_").replace("/", "_").replace(" ", "_")
-            
-            # URL limpia hacia la estructura de distribuidoras en Firebase Realtime Database
-            url_rtdb = f"{URL_BASE}/distribuidoras/DISTRIBUIDORA_ALINVET/visitas/{nodo_url_seguro}_{timestamp_id}.json"
+            timestamp_seguro = re.sub(r'[^a-zA-Z0-9_]', '_', str(timestamp_id))
+            url_rtdb = f"{URL_BASE}/distribuidoras/DISTRIBUIDORA_ALINVET/visitas/visita_{timestamp_seguro}.json"
             
             response_rtdb = requests.put(url_rtdb, json=data_visita, timeout=15)
             

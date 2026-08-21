@@ -22,25 +22,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
 
-      - name: Configurar entorno con pip compatible
+      - name: Configurar entorno con pip y p4a compatibles
         run: |
           python -m pip install --upgrade "pip==23.3.2"
           pip install --upgrade virtualenv cython buildozer
+          pip install --upgrade "python-for-android>=2024.01.01"
           pip install openpyxl requests pillow pyjnius
 
       - name: Compilar la APK con Buildozer
-        run: |
-          # Intentamos compilar; si python-for-android crea su entorno virtual interno y falla, 
-          # podemos forzar la actualización del pip interno asegurando la ruta del venv o usando este bloque:
-          buildozer android debug || (
-            echo "Actualizando pip dentro del entorno virtual de p4a..."
-            if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/venv" ]; then
-              .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/venv/bin/pip install --upgrade pip setuptools wheel
-            elif [ -d ".buildozer/android/platform/build-arm64-v8a/build/venv" ]; then
-              .buildozer/android/platform/build-arm64-v8a/build/venv/bin/pip install --upgrade pip setuptools wheel
-            fi
-            buildozer android debug
-          )
+        run: buildozer android debug
 
       - name: Guardar la APK generada
         uses: actions/upload-artifact@v4

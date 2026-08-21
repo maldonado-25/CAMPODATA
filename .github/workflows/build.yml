@@ -24,7 +24,7 @@ jobs:
 
       - name: Configurar entorno con pip compatible
         run: |
-          python -m pip install --upgrade "pip<24.0"
+          python -m pip install --upgrade "pip==23.3.2"
           pip install --upgrade virtualenv cython buildozer
           pip install openpyxl requests pillow pyjnius
 

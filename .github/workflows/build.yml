@@ -45,9 +45,8 @@ jobs:
         touch ~/.android/repositories.cfg
         yes | sdkmanager --licenses || true
 
-    - name: Limpiar compilaciones anteriores y compilar APK
+    - name: Compilar APK con Buildozer
       run: |
-        yes | buildozer -v android clean
         yes | buildozer -v android debug
 
     - name: Guardar APK como artefacto

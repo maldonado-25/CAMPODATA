@@ -54,3 +54,8 @@ jobs:
       with:
         name: app-campodata-debug
         path: bin/*.apk
+- name: Compilar APK con Buildozer
+      env:
+        MAKEOPTS: "-j1"
+      run: |
+        yes | buildozer -v android debug

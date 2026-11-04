@@ -5,6 +5,8 @@ title = CampoData
 source.dir = .
 # (str) Package name
 package.name = campodata
+# (str) Custom CCache options
+# ccache.options =
 
 # (str) Package domain (needed for android packaging)
 package.domain = com.maldonado.agro

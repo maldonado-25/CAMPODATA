@@ -79,7 +79,7 @@ android.ndk = 25b
 #android.add_libs_implementation = 
 
 # (list) The android archs to build for, in order of decreasing priority.
-android.archs = arm64-v8a, armeabi-v7a
+android.archs = armeabi-v7a
 
 # (bool) If True, then p4a will perform a clean build
 android.clear_cache = False
